@@ -3,3 +3,5 @@
 !.gitignore
 !subdir/
 !scratch-simulator.cc
+!CMakeLists.txt
+!forced-distribution-test.cc

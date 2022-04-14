@@ -224,6 +224,112 @@ private:
 
 /**
  * \ingroup mobility
+ * \brief Allocate positions on a rectangular 2d grid
+ *        through a forced uniform distribution
+ */
+class UniformGridPositionAllocator : public PositionAllocator
+{
+public:
+  /**
+   * Register this type with the TypeId system.
+   * \return the object TypeId
+   */
+  static TypeId GetTypeId (void);
+
+  /**
+   * Determine whether positions are allocated row first or column first.
+   */
+  enum LayoutType
+  {
+    /**
+     * In row-first mode, positions are allocated on the first row until
+     * N positions have been allocated. Then, the second row located a yMin + yDelta
+     * is used to allocate positions.
+     */
+    ROW_FIRST,
+    /**
+     * In column-first mode, positions are allocated on the first column until
+     * N positions have been allocated. Then, the second column located a xMin + xDelta
+     * is used to allocate positions.
+     */
+    COLUMN_FIRST
+  };
+
+  UniformGridPositionAllocator ();
+
+  /**
+   * \param xMin the x coordinate where layout will start.
+   */
+  void SetMinX (double xMin);
+  /**
+   * \param yMin the y coordinate where layout will start
+   */
+  void SetMinY (double yMin);
+  /**
+   * \param z   the Z coordinate of all the positions allocated
+   */
+  void SetZ (double z);
+  /**
+   * \param deltaX the x interval between two x-consecutive positions.
+   */
+  void SetDeltaX (double deltaX);
+  /**
+   * \param deltaY the y interval between two y-consecutive positions.
+   */
+  void SetDeltaY (double deltaY);
+  /**
+   * \param n the number of positions allocated on each row (or each column)
+   *        before switching to the next column (or row).
+   */
+  void SetN (uint32_t n);
+  /**
+   * \param layoutType the type of layout to use (row first or column first).
+   */
+  void SetLayoutType (enum LayoutType layoutType);
+
+  /**
+   * \return the x coordinate of the first allocated position.
+   */
+  double GetMinX (void) const;
+  /**
+   * \return the y coordinate of the first allocated position.
+   */
+  double GetMinY (void) const;
+  /**
+   * \return the x interval between two consecutive x-positions.
+   */
+  double GetDeltaX (void) const;
+  /**
+   * \return the y interval between two consecutive y-positions.
+   */
+  double GetDeltaY (void) const;
+  /**
+   * \return the number of positions to allocate on each row or each column.
+   */
+  uint32_t GetN (void) const;
+  /**
+   * \return the currently-selected layout type.
+   */
+  enum LayoutType GetLayoutType (void) const;
+
+
+  virtual Vector GetNext (void) const;
+  virtual int64_t AssignStreams (int64_t stream);
+
+private:
+  mutable uint32_t m_current; //!< currently position
+  enum LayoutType m_layoutType;  //!< currently selected layout type
+  double m_xMin; //!< minimum boundary on x positions
+  double m_yMin; //!< minimum boundary on y positions
+  double m_z; //!< z coordinate of all the positions generated
+  uint32_t m_n;  //!< number of positions to allocate on each row or column
+  double m_deltaX; //!< x interval between two consecutive x positions
+  double m_deltaY; //!< y interval between two consecutive y positions
+};
+
+
+/**
+ * \ingroup mobility
  * \brief Allocate random positions within a rectangle according to a pair of random variables.
  */
 class RandomRectanglePositionAllocator : public PositionAllocator

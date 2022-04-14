@@ -290,6 +290,156 @@ GridPositionAllocator::AssignStreams (int64_t stream)
   return 0;
 }
 
+NS_OBJECT_ENSURE_REGISTERED (UniformGridPositionAllocator);
+
+TypeId
+UniformGridPositionAllocator::GetTypeId (void)
+{
+  static TypeId tid = TypeId ("ns3::UniformGridPositionAllocator")
+    .SetParent<PositionAllocator> ()
+    .SetGroupName ("Mobility")
+    .AddConstructor<UniformGridPositionAllocator> ()
+    .AddAttribute ("GridWidth", "The number of objects laid out on a line.",
+                   UintegerValue (10),
+                   MakeUintegerAccessor (&UniformGridPositionAllocator::m_n),
+                   MakeUintegerChecker<uint32_t> ())
+    .AddAttribute ("MinX", "The x coordinate where the grid starts.",
+                   DoubleValue (1.0),
+                   MakeDoubleAccessor (&UniformGridPositionAllocator::m_xMin),
+                   MakeDoubleChecker<double> ())
+    .AddAttribute ("MinY", "The y coordinate where the grid starts.",
+                   DoubleValue (0.0),
+                   MakeDoubleAccessor (&UniformGridPositionAllocator::m_yMin),
+                   MakeDoubleChecker<double> ())
+    .AddAttribute ("Z",
+                   "The z coordinate of all the positions allocated.",
+                   DoubleValue (0.0),
+                   MakeDoubleAccessor (&UniformGridPositionAllocator::m_z),
+                   MakeDoubleChecker<double> ())
+    .AddAttribute ("DeltaX", "The x space between objects.",
+                   DoubleValue (1.0),
+                   MakeDoubleAccessor (&UniformGridPositionAllocator::m_deltaX),
+                   MakeDoubleChecker<double> ())
+    .AddAttribute ("DeltaY", "The y space between objects.",
+                   DoubleValue (1.0),
+                   MakeDoubleAccessor (&UniformGridPositionAllocator::m_deltaY),
+                   MakeDoubleChecker<double> ())
+    .AddAttribute ("LayoutType", "The type of layout.",
+                   EnumValue (ROW_FIRST),
+                   MakeEnumAccessor (&UniformGridPositionAllocator::m_layoutType),
+                   MakeEnumChecker (ROW_FIRST, "RowFirst",
+                                    COLUMN_FIRST, "ColumnFirst"))
+    ;
+  return tid;
+}
+
+UniformGridPositionAllocator::UniformGridPositionAllocator ()
+  : m_current (0)
+{}
+
+void
+UniformGridPositionAllocator::SetMinX (double xMin)
+{
+  m_xMin = xMin;
+}
+
+void
+UniformGridPositionAllocator::SetMinY (double yMin)
+{
+  m_yMin = yMin;
+}
+
+void
+UniformGridPositionAllocator::SetZ (double z)
+{
+  m_z = z;
+}
+
+void
+UniformGridPositionAllocator::SetDeltaX (double deltaX)
+{
+  m_deltaX = deltaX;
+}
+
+void
+UniformGridPositionAllocator::SetDeltaY (double deltaY)
+{
+  m_deltaY = deltaY;
+}
+
+void
+UniformGridPositionAllocator::SetN (uint32_t n)
+{
+  m_n = n;
+}
+
+void
+UniformGridPositionAllocator::SetLayoutType (enum LayoutType layoutType)
+{
+  m_layoutType = layoutType;
+}
+
+double
+UniformGridPositionAllocator::GetMinX (void) const
+{
+  return m_xMin;
+}
+
+double
+UniformGridPositionAllocator::GetMinY (void) const
+{
+  return m_yMin;
+}
+
+double
+UniformGridPositionAllocator::GetDeltaX (void) const
+{
+  return m_deltaX;
+}
+
+double
+UniformGridPositionAllocator::GetDeltaY (void) const
+{
+  return m_deltaY;
+}
+
+uint32_t
+UniformGridPositionAllocator::GetN (void) const
+{
+  return m_n;
+}
+
+enum UniformGridPositionAllocator::LayoutType
+UniformGridPositionAllocator::GetLayoutType (void) const
+{
+  return m_layoutType;
+}
+
+Vector
+UniformGridPositionAllocator::GetNext (void) const
+{
+  double x = 0.0, y = 0.0;
+  switch (m_layoutType)
+    {
+      case ROW_FIRST:
+        x = m_xMin + m_deltaX * (m_current % m_n);
+        y = m_yMin + m_deltaY * (m_current / m_n);
+        break;
+      case COLUMN_FIRST:
+        x = m_xMin + m_deltaX * (m_current / m_n);
+        y = m_yMin + m_deltaY * (m_current % m_n);
+        break;
+    }
+  m_current++;
+  return Vector (x, y, m_z);
+}
+
+int64_t
+UniformGridPositionAllocator::AssignStreams (int64_t stream)
+{
+  return 0;
+}
+
 
 NS_OBJECT_ENSURE_REGISTERED (RandomRectanglePositionAllocator);
 
