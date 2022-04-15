@@ -80,6 +80,7 @@ RandomWaypointMobilityModel::BeginWalk (void)
 void
 RandomWaypointMobilityModel::DoInitialize (void)
 {
+  std::cout << "Hello\n";
   DoInitializePrivate ();
   MobilityModel::DoInitialize ();
 }

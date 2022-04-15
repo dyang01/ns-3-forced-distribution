@@ -22,6 +22,7 @@
 #include "ns3/string.h"
 #include "ns3/pointer.h"
 #include "ns3/uinteger.h"
+#include "ns3/integer.h"
 #include "ns3/enum.h"
 #include "ns3/log.h"
 #include "ns3/csv-reader.h"
@@ -324,11 +325,10 @@ UniformGridPositionAllocator::GetTypeId (void)
                    DoubleValue (1.0),
                    MakeDoubleAccessor (&UniformGridPositionAllocator::m_deltaY),
                    MakeDoubleChecker<double> ())
-    .AddAttribute ("LayoutType", "The type of layout.",
-                   EnumValue (ROW_FIRST),
-                   MakeEnumAccessor (&UniformGridPositionAllocator::m_layoutType),
-                   MakeEnumChecker (ROW_FIRST, "RowFirst",
-                                    COLUMN_FIRST, "ColumnFirst"))
+    .AddAttribute ("Radius", "Search radius to determine a node's new position",
+                   IntegerValue (1),
+                   MakeIntegerAccessor (&UniformGridPositionAllocator::m_radius),
+                   MakeIntegerChecker<int32_t> ())
     ;
   return tid;
 }
@@ -373,12 +373,6 @@ UniformGridPositionAllocator::SetN (uint32_t n)
   m_n = n;
 }
 
-void
-UniformGridPositionAllocator::SetLayoutType (enum LayoutType layoutType)
-{
-  m_layoutType = layoutType;
-}
-
 double
 UniformGridPositionAllocator::GetMinX (void) const
 {
@@ -409,27 +403,14 @@ UniformGridPositionAllocator::GetN (void) const
   return m_n;
 }
 
-enum UniformGridPositionAllocator::LayoutType
-UniformGridPositionAllocator::GetLayoutType (void) const
-{
-  return m_layoutType;
-}
-
 Vector
 UniformGridPositionAllocator::GetNext (void) const
 {
   double x = 0.0, y = 0.0;
-  switch (m_layoutType)
-    {
-      case ROW_FIRST:
-        x = m_xMin + m_deltaX * (m_current % m_n);
-        y = m_yMin + m_deltaY * (m_current / m_n);
-        break;
-      case COLUMN_FIRST:
-        x = m_xMin + m_deltaX * (m_current / m_n);
-        y = m_yMin + m_deltaY * (m_current % m_n);
-        break;
-    }
+  //x = m_xMin + m_deltaX * (m_current % m_n);
+  //y = m_yMin + m_deltaY * (m_current / m_n);
+  x = rand_num->GetValue();
+  y = rand_num->GetValue();
   m_current++;
   return Vector (x, y, m_z);
 }

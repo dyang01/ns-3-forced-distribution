@@ -23,6 +23,7 @@
 #include "ns3/object.h"
 #include "ns3/random-variable-stream.h"
 #include "ns3/vector.h"
+#include <map>
 
 namespace ns3 {
 
@@ -283,9 +284,10 @@ public:
    */
   void SetN (uint32_t n);
   /**
-   * \param layoutType the type of layout to use (row first or column first).
+   * \param radius the search radius used to determine a node's new
+   *        position. Set to -1 for global search.
    */
-  void SetLayoutType (enum LayoutType layoutType);
+  void SetRadius (int32_t radius);
 
   /**
    * \return the x coordinate of the first allocated position.
@@ -310,7 +312,7 @@ public:
   /**
    * \return the currently-selected layout type.
    */
-  enum LayoutType GetLayoutType (void) const;
+  int32_t GetRadius (void) const;
 
 
   virtual Vector GetNext (void) const;
@@ -318,13 +320,17 @@ public:
 
 private:
   mutable uint32_t m_current; //!< currently position
-  enum LayoutType m_layoutType;  //!< currently selected layout type
   double m_xMin; //!< minimum boundary on x positions
   double m_yMin; //!< minimum boundary on y positions
   double m_z; //!< z coordinate of all the positions generated
   uint32_t m_n;  //!< number of positions to allocate on each row or column
   double m_deltaX; //!< x interval between two consecutive x positions
   double m_deltaY; //!< y interval between two consecutive y positions
+  int32_t m_radius; //!< search radius of a node's new position
+  uint32_t m_numRows; //!< number of rows in the grid
+  uint32_t m_numCols; //!< number of columns in the grid
+  std::map<int32_t,int32_t> grid_visits;  //!< map of visits per grid location
+  Ptr<UniformRandomVariable> rand_num = CreateObject<UniformRandomVariable> ();
 };
 
 

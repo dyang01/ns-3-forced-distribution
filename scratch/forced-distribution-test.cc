@@ -1,5 +1,7 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil; -*- */
 /*
+ * Copyright (c) 2006,2007 INRIA
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation;
@@ -12,199 +14,93 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
- */
+ */ 
 
 #include "ns3/core-module.h"
-#include "ns3/point-to-point-module.h"
-#include "ns3/network-module.h"
-#include "ns3/applications-module.h"
 #include "ns3/mobility-module.h"
-#include "ns3/csma-module.h"
-#include "ns3/internet-module.h"
-#include "ns3/yans-wifi-helper.h"
-#include "ns3/ssid.h"
-
-// Default Network Topology
-//
-//   Wifi 10.1.3.0
-//                 AP
-//  *    *    *    *
-//  |    |    |    |    10.1.1.0
-// n5   n6   n7   n0 -------------- n1   n2   n3   n4
-//                   point-to-point  |    |    |    |
-//                                   ================
-//                                     LAN 10.1.2.0
+#include <iostream>
+#include <fstream>
+#include <math.h>
 
 using namespace ns3;
-
-NS_LOG_COMPONENT_DEFINE ("Forced-Distribution-Test");
-
-int 
-main (int argc, char *argv[])
+int main (int argc, char *argv[])
 {
-  RngSeedManager::SetSeed(123456789);
-  bool verbose = true;
-  uint32_t nWifi = 3;
-  uint32_t nPackets = 1;
-  bool tracing = false;
+  // Set default parameters for cmd inputs
+  uint32_t numNodes = 10;
+  std::string mobility_model = "waypoint";
+  uint32_t duration = 10;
+  std::string minSpeed = "4.0";
+  std::string maxSpeed = "6.0";
+  std::string pause = "2.0";
 
+
+  // Read cmd inputs
   CommandLine cmd (__FILE__);
-  cmd.AddValue ("nWifi", "Number of wifi STA devices", nWifi);
-  cmd.AddValue ("nPackets", "Number of packets to send", nPackets);
-  cmd.AddValue ("verbose", "Tell echo applications to log if true", verbose);
-  cmd.AddValue ("tracing", "Enable pcap tracing", tracing);
+  cmd.AddValue ("numNodes", "Number of nodes for the mobility model", numNodes);
+  cmd.AddValue ("mobility", "The mobility model to use. Specify 'walk' or 'waypoint'", mobility_model);
+  cmd.AddValue ("duration", "Simulation total runtime", duration);
+  cmd.AddValue ("minSpeed", "Minimum speed of a node", minSpeed);
+  cmd.AddValue ("maxSpeed", "Maximum speed of a node", maxSpeed);
+  cmd.AddValue ("pause", "Pause time for each node", pause);
+  cmd.Parse (argc, argv);
 
-  cmd.Parse (argc,argv);
+  std::string speed = "ns3::UniformRandomVariable[Min=" + minSpeed + "|Max=" + maxSpeed + "]";
 
-  // The underlying restriction of 18 is due to the grid position
-  // allocator's configuration; the grid layout will exceed the
-  // bounding box if more than 18 nodes are provided.
-  if (nWifi > 9)
-    {
-      std::cout << "nWifi should be 9 or less; otherwise grid layout exceeds the bounding box" << std::endl;
-      return 1;
-    }
+  // Create nodes
+  NodeContainer c;
+  c.Create (numNodes);
 
-  if (verbose)
-    {
-      LogComponentEnable ("UdpEchoClientApplication", LOG_LEVEL_INFO);
-      LogComponentEnable ("UdpEchoServerApplication", LOG_LEVEL_INFO);
-    }
-
-  if (nPackets > 20) nPackets = 20;
-
-  NodeContainer p2pNodes;
-  p2pNodes.Create (2);
-
-  PointToPointHelper pointToPoint;
-  pointToPoint.SetDeviceAttribute ("DataRate", StringValue ("5Mbps"));
-  pointToPoint.SetChannelAttribute ("Delay", StringValue ("2ms"));
-
-  NetDeviceContainer p2pDevices;
-  p2pDevices = pointToPoint.Install (p2pNodes);
-
-  NodeContainer wifiStaNodes;
-  wifiStaNodes.Create (nWifi);
-  NodeContainer wifiApNode = p2pNodes.Get (0);
-
-  YansWifiChannelHelper channel = YansWifiChannelHelper::Default ();
-  YansWifiPhyHelper phy;
-  phy.SetChannel (channel.Create ());
-
-  WifiHelper wifi;
-  wifi.SetRemoteStationManager ("ns3::AarfWifiManager");
-
-  WifiMacHelper mac;
-  Ssid ssid = Ssid ("ns-3-ssid");
-  mac.SetType ("ns3::StaWifiMac",
-               "Ssid", SsidValue (ssid),
-               "ActiveProbing", BooleanValue (false));
-
-  NetDeviceContainer staDevices;
-  staDevices = wifi.Install (phy, mac, wifiStaNodes);
-
-  mac.SetType ("ns3::ApWifiMac",
-               "Ssid", SsidValue (ssid));
-
-  NetDeviceContainer apDevices;
-  apDevices = wifi.Install (phy, mac, wifiApNode);
-
-  // Create another WiFi Network
-  NodeContainer wifiStaNodes2;
-  wifiStaNodes2.Create (nWifi);
-  NodeContainer wifiApNode2 = p2pNodes.Get (1);
-
-  YansWifiChannelHelper channel2 = YansWifiChannelHelper::Default ();
-  YansWifiPhyHelper phy2;
-  phy2.SetChannel (channel2.Create ());
-
-  WifiHelper wifi2;
-  wifi2.SetRemoteStationManager ("ns3::AarfWifiManager");
-
-  WifiMacHelper mac2;
-  Ssid ssid2 = Ssid ("ns-3-ssid2");
-  mac2.SetType ("ns3::StaWifiMac",
-               "Ssid", SsidValue (ssid2),
-               "ActiveProbing", BooleanValue (false));
-
-  NetDeviceContainer staDevices2;
-  staDevices2 = wifi2.Install (phy2, mac2, wifiStaNodes2);
-
-  mac2.SetType ("ns3::ApWifiMac",
-               "Ssid", SsidValue (ssid2));
-
-  NetDeviceContainer apDevices2;
-  apDevices2 = wifi2.Install (phy2, mac2, wifiApNode2);
-
-
+  // Create mobility model
   MobilityHelper mobility;
+  ObjectFactory pos;
+  pos.SetTypeId ("ns3::UniformGridPositionAllocator");
+  pos.Set( "MinX", DoubleValue (0.0));
+  pos.Set( "MinY", DoubleValue (0.0));
+  pos.Set( "DeltaX", DoubleValue (5.0));
+  pos.Set( "DeltaY", DoubleValue (5.0));
+  pos.Set( "GridWidth", UintegerValue (3));
+  pos.Set( "Radius", IntegerValue (3));
+  Ptr <PositionAllocator> taPositionAlloc = pos.Create ()->GetObject <PositionAllocator> ();
+  if (mobility_model == "walk") {
+    mobility.SetMobilityModel ("ns3::RandomWalk2dMobilityModel",
+                              "Mode", StringValue ("Time"),
+                              "Time", StringValue ("2s"),
+                              "Speed", StringValue (speed), 
+                              "Bounds", StringValue ("0|80|0|80"));
+  } else if (mobility_model == "waypoint") {
+    mobility.SetMobilityModel ("ns3::RandomWaypointMobilityModel", 
+                               "Speed", StringValue (speed),
+                               "Pause", StringValue ("ns3::ConstantRandomVariable[Constant=" + pause + "]"), 
+                               "PositionAllocator", PointerValue (taPositionAlloc));
+  }
+  mobility.SetPositionAllocator (taPositionAlloc);
+  mobility.InstallAll ();
 
-  mobility.SetPositionAllocator ("ns3::UniformGridPositionAllocator",
-                                 "MinX", DoubleValue (0.0),
-                                 "MinY", DoubleValue (0.0),
-                                 "DeltaX", DoubleValue (5.0),
-                                 "DeltaY", DoubleValue (10.0),
-                                 "GridWidth", UintegerValue (3),
-                                 "LayoutType", StringValue ("RowFirst"));
-
-  mobility.SetMobilityModel ("ns3::RandomWalk2dMobilityModel",
-                             "Bounds", RectangleValue (Rectangle (-50, 50, -50, 50)));
-  mobility.Install (wifiStaNodes);
-  mobility.Install (wifiStaNodes2);
-
-  mobility.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
-  mobility.Install (wifiApNode);
-  mobility.Install (wifiApNode2);
-
-  InternetStackHelper stack;
-  stack.Install (wifiApNode);
-  stack.Install (wifiStaNodes);
-  stack.Install (wifiApNode2);
-  stack.Install (wifiStaNodes2);
-
-  Ipv4AddressHelper address;
-
-  address.SetBase ("10.1.1.0", "255.255.255.0");
-  Ipv4InterfaceContainer p2pInterfaces;
-  p2pInterfaces = address.Assign (p2pDevices);
-
-  address.SetBase ("10.1.2.0", "255.255.255.0");
-  Ipv4InterfaceContainer wifiInterfaces;
-  wifiInterfaces = address.Assign (staDevices);
-  address.Assign (apDevices);
-
-  address.SetBase ("10.1.3.0", "255.255.255.0");
-  address.Assign (staDevices2);
-  address.Assign (apDevices2);
-
-  UdpEchoServerHelper echoServer (9);
-
-  ApplicationContainer serverApps = echoServer.Install (wifiStaNodes.Get (nWifi - 1));
-  serverApps.Start (Seconds (1.0));
-  serverApps.Stop (Seconds (30.0));
-
-  UdpEchoClientHelper echoClient (wifiInterfaces.GetAddress (nWifi - 1), 9);
-  echoClient.SetAttribute ("MaxPackets", UintegerValue (nPackets));
-  echoClient.SetAttribute ("Interval", TimeValue (Seconds (1.0)));
-  echoClient.SetAttribute ("PacketSize", UintegerValue (1024));
-
-  ApplicationContainer clientApps = 
-    echoClient.Install (wifiStaNodes2.Get (nWifi - 1));
-  clientApps.Start (Seconds (2.0));
-  clientApps.Stop (Seconds (30.0));
-
-  Ipv4GlobalRoutingHelper::PopulateRoutingTables ();
-
-  Simulator::Stop (Seconds (30.0));
-
-  if (tracing)
-    {
-      phy.SetPcapDataLinkType (WifiPhyHelper::DLT_IEEE802_11_RADIO);
-      pointToPoint.EnablePcapAll ("third");
-      phy.EnablePcap ("third", apDevices.Get (0));
-    }
+  // Run Simulation
+  Simulator::Stop (Seconds (duration));
 
   Simulator::Run ();
+
+  // Read and Write stats from simulation
+  std::ofstream output;
+  std::string output_name = mobility_model + "_part1b.txt";
+  output.open (output_name);
+  output << "node,x-coord,y-coord,distFromCenter\n";
+  double average_dist_sum = 0;
+
+  for (uint32_t i = 0; i < numNodes; i++) {
+    Ptr<MobilityModel> mmp = c.Get(i)->GetObject<MobilityModel>();
+    Vector apV;
+    apV = mmp->GetPosition();
+    std::cout << "Node " << i << ": x-coord: " << apV.x << ", y-coord: " << apV.y << std::endl;
+    double average_dist = pow(pow(((double)apV.x - 40.0), 2) + pow(((double)apV.y - 40), 2),0.5);
+    average_dist_sum += average_dist;
+    output << i << "," << apV.x << "," << apV.y << "," << average_dist << std::endl;
+  }
+  average_dist_sum /= numNodes;
+  std::cout << "Average Dist From Center: " << average_dist_sum << std::endl;
+  output << "Average Dist From Center: " << average_dist_sum << std::endl;
+
   Simulator::Destroy ();
   return 0;
 }
