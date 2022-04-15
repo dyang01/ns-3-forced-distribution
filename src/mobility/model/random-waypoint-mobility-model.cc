@@ -67,6 +67,7 @@ RandomWaypointMobilityModel::BeginWalk (void)
   double dy = (destination.y - m_current.y);
   double dz = (destination.z - m_current.z);
   double k = speed / std::sqrt (dx*dx + dy*dy + dz*dz);
+  std::cout << "Going to xyz:" << destination.x << ',' << destination.y << ',' << destination.z << std::endl;
 
   m_helper.SetVelocity (Vector (k*dx, k*dy, k*dz));
   m_helper.Unpause ();
@@ -80,7 +81,6 @@ RandomWaypointMobilityModel::BeginWalk (void)
 void
 RandomWaypointMobilityModel::DoInitialize (void)
 {
-  std::cout << "Hello\n";
   DoInitializePrivate ();
   MobilityModel::DoInitialize ();
 }

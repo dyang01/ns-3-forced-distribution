@@ -28,6 +28,7 @@
 #include "ns3/csv-reader.h"
 
 #include <cmath>
+#include <vector>
 
 namespace ns3 {
 
@@ -300,30 +301,18 @@ UniformGridPositionAllocator::GetTypeId (void)
     .SetParent<PositionAllocator> ()
     .SetGroupName ("Mobility")
     .AddConstructor<UniformGridPositionAllocator> ()
-    .AddAttribute ("GridWidth", "The number of objects laid out on a line.",
-                   UintegerValue (10),
-                   MakeUintegerAccessor (&UniformGridPositionAllocator::m_n),
+    .AddAttribute ("Dimension", "The dimensions for both the x and y axis",
+                   UintegerValue (6),
+                   MakeUintegerAccessor(&UniformGridPositionAllocator::m_dimension),
                    MakeUintegerChecker<uint32_t> ())
-    .AddAttribute ("MinX", "The x coordinate where the grid starts.",
-                   DoubleValue (1.0),
-                   MakeDoubleAccessor (&UniformGridPositionAllocator::m_xMin),
-                   MakeDoubleChecker<double> ())
-    .AddAttribute ("MinY", "The y coordinate where the grid starts.",
-                   DoubleValue (0.0),
-                   MakeDoubleAccessor (&UniformGridPositionAllocator::m_yMin),
-                   MakeDoubleChecker<double> ())
     .AddAttribute ("Z",
                    "The z coordinate of all the positions allocated.",
                    DoubleValue (0.0),
                    MakeDoubleAccessor (&UniformGridPositionAllocator::m_z),
                    MakeDoubleChecker<double> ())
-    .AddAttribute ("DeltaX", "The x space between objects.",
+    .AddAttribute ("Delta", "The space between objects.",
                    DoubleValue (1.0),
-                   MakeDoubleAccessor (&UniformGridPositionAllocator::m_deltaX),
-                   MakeDoubleChecker<double> ())
-    .AddAttribute ("DeltaY", "The y space between objects.",
-                   DoubleValue (1.0),
-                   MakeDoubleAccessor (&UniformGridPositionAllocator::m_deltaY),
+                   MakeDoubleAccessor (&UniformGridPositionAllocator::m_delta),
                    MakeDoubleChecker<double> ())
     .AddAttribute ("Radius", "Search radius to determine a node's new position",
                    IntegerValue (1),
@@ -335,18 +324,13 @@ UniformGridPositionAllocator::GetTypeId (void)
 
 UniformGridPositionAllocator::UniformGridPositionAllocator ()
   : m_current (0)
-{}
-
-void
-UniformGridPositionAllocator::SetMinX (double xMin)
 {
-  m_xMin = xMin;
 }
 
 void
-UniformGridPositionAllocator::SetMinY (double yMin)
+UniformGridPositionAllocator::SetDimension(uint32_t dimension)
 {
-  m_yMin = yMin;
+  m_dimension = dimension;
 }
 
 void
@@ -356,63 +340,90 @@ UniformGridPositionAllocator::SetZ (double z)
 }
 
 void
-UniformGridPositionAllocator::SetDeltaX (double deltaX)
+UniformGridPositionAllocator::SetDelta (double delta)
 {
-  m_deltaX = deltaX;
+  m_delta = delta;
 }
 
 void
-UniformGridPositionAllocator::SetDeltaY (double deltaY)
+UniformGridPositionAllocator::SetRadius (int32_t radius)
 {
-  m_deltaY = deltaY;
-}
-
-void
-UniformGridPositionAllocator::SetN (uint32_t n)
-{
-  m_n = n;
-}
-
-double
-UniformGridPositionAllocator::GetMinX (void) const
-{
-  return m_xMin;
-}
-
-double
-UniformGridPositionAllocator::GetMinY (void) const
-{
-  return m_yMin;
-}
-
-double
-UniformGridPositionAllocator::GetDeltaX (void) const
-{
-  return m_deltaX;
-}
-
-double
-UniformGridPositionAllocator::GetDeltaY (void) const
-{
-  return m_deltaY;
+  m_radius = radius;
 }
 
 uint32_t
-UniformGridPositionAllocator::GetN (void) const
+UniformGridPositionAllocator::GetDimension (void) const
 {
-  return m_n;
+  return m_dimension;
+}
+
+double
+UniformGridPositionAllocator::GetDelta (void) const
+{
+  return m_delta;
+}
+
+int32_t
+UniformGridPositionAllocator::GetRadius (void) const
+{
+  return m_radius;
+}
+
+Vector
+UniformGridPositionAllocator::GetGridVector (int32_t grid_num) const
+{
+  // Determine row and column number
+  int row = grid_num / m_dimension;
+  int col = grid_num % m_dimension;
+
+  // Determine coordinate values
+  double x = col * m_delta + (m_delta / 2.0);
+  double y = row * m_delta + (m_delta / 2.0);
+
+  // Return vector
+  //std::cout << " Coords(x,y): " << x << ',' << y << std::endl;
+  return Vector(x, y , m_z);
+}
+
+Vector
+UniformGridPositionAllocator::GetNextHelper (void) const
+{
+  // Find minimum value in map first
+  int min = 999999;
+  int max_locations = m_dimension * m_dimension;
+  for (int i = 0; i < max_locations; i++) {
+    if (grid_visits[i] < min) min = grid_visits[i];
+  }
+
+  std::vector<int> indexes;
+  // Search through entire map and keep track of lowest visit count
+  for (int i = 0; i < max_locations; i++) {
+    if (grid_visits[i] == min) indexes.push_back(i);
+  }
+  
+  // Based on size of vector, choose random grid location
+  int lowest_visit = indexes[(int)(rand_num->GetValue() * indexes.size())];
+
+  // Increment visit count
+  grid_visits[lowest_visit]++;
+  //std::cout << "Selecting grid#: " << lowest_visit << " Visits: " << grid_visits[lowest_visit];
+  
+  // Return Vector
+  return GetGridVector(lowest_visit);
 }
 
 Vector
 UniformGridPositionAllocator::GetNext (void) const
 {
-  double x = 0.0, y = 0.0;
+  //std::cout << "VISITS: " << grid_visits[0] << std::endl;
+  //grid_visits[0]++;
+  //double x = 0.0, y = 0.0;
   //x = m_xMin + m_deltaX * (m_current % m_n);
   //y = m_yMin + m_deltaY * (m_current / m_n);
-  x = rand_num->GetValue();
-  y = rand_num->GetValue();
-  m_current++;
-  return Vector (x, y, m_z);
+  //x = rand_num->GetValue();
+  //y = rand_num->GetValue();
+  //m_current++;
+  return GetNextHelper();
 }
 
 int64_t

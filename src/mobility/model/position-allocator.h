@@ -237,52 +237,20 @@ public:
    */
   static TypeId GetTypeId (void);
 
-  /**
-   * Determine whether positions are allocated row first or column first.
-   */
-  enum LayoutType
-  {
-    /**
-     * In row-first mode, positions are allocated on the first row until
-     * N positions have been allocated. Then, the second row located a yMin + yDelta
-     * is used to allocate positions.
-     */
-    ROW_FIRST,
-    /**
-     * In column-first mode, positions are allocated on the first column until
-     * N positions have been allocated. Then, the second column located a xMin + xDelta
-     * is used to allocate positions.
-     */
-    COLUMN_FIRST
-  };
-
   UniformGridPositionAllocator ();
 
   /**
-   * \param xMin the x coordinate where layout will start.
+   * \param dimension the number of rows and columns in the grid.
    */
-  void SetMinX (double xMin);
-  /**
-   * \param yMin the y coordinate where layout will start
-   */
-  void SetMinY (double yMin);
+  void SetDimension (uint32_t dimension);
   /**
    * \param z   the Z coordinate of all the positions allocated
    */
   void SetZ (double z);
   /**
-   * \param deltaX the x interval between two x-consecutive positions.
+   * \param delta the interval between two consecutive positions.
    */
-  void SetDeltaX (double deltaX);
-  /**
-   * \param deltaY the y interval between two y-consecutive positions.
-   */
-  void SetDeltaY (double deltaY);
-  /**
-   * \param n the number of positions allocated on each row (or each column)
-   *        before switching to the next column (or row).
-   */
-  void SetN (uint32_t n);
+  void SetDelta (double delta);
   /**
    * \param radius the search radius used to determine a node's new
    *        position. Set to -1 for global search.
@@ -290,46 +258,36 @@ public:
   void SetRadius (int32_t radius);
 
   /**
-   * \return the x coordinate of the first allocated position.
+   * \return the x and y dimension of the grid. 
    */
-  double GetMinX (void) const;
+  uint32_t GetDimension (void) const;
   /**
-   * \return the y coordinate of the first allocated position.
+   * \return the interval between two consecutive positions.
    */
-  double GetMinY (void) const;
+  double GetDelta (void) const;
   /**
-   * \return the x interval between two consecutive x-positions.
-   */
-  double GetDeltaX (void) const;
-  /**
-   * \return the y interval between two consecutive y-positions.
-   */
-  double GetDeltaY (void) const;
-  /**
-   * \return the number of positions to allocate on each row or each column.
-   */
-  uint32_t GetN (void) const;
-  /**
-   * \return the currently-selected layout type.
+   * \return the search radius of a given node.
    */
   int32_t GetRadius (void) const;
 
-
+  /**
+   * Determine coordinates of node number in grid
+   */
+  Vector GetGridVector (int32_t grid_num) const;
+  /**
+   * Chooses an XY location with the least amount of visits
+   */
+  Vector GetNextHelper (void) const;
   virtual Vector GetNext (void) const;
   virtual int64_t AssignStreams (int64_t stream);
 
 private:
   mutable uint32_t m_current; //!< currently position
-  double m_xMin; //!< minimum boundary on x positions
-  double m_yMin; //!< minimum boundary on y positions
+  uint32_t m_dimension; //!< grid dimesions for both x and y axis 
   double m_z; //!< z coordinate of all the positions generated
-  uint32_t m_n;  //!< number of positions to allocate on each row or column
-  double m_deltaX; //!< x interval between two consecutive x positions
-  double m_deltaY; //!< y interval between two consecutive y positions
+  double m_delta; //!< interval between two consecutive positions
   int32_t m_radius; //!< search radius of a node's new position
-  uint32_t m_numRows; //!< number of rows in the grid
-  uint32_t m_numCols; //!< number of columns in the grid
-  std::map<int32_t,int32_t> grid_visits;  //!< map of visits per grid location
+  mutable std::map<int32_t,int32_t> grid_visits;  //!< map of visits per grid location
   Ptr<UniformRandomVariable> rand_num = CreateObject<UniformRandomVariable> ();
 };
 
