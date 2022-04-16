@@ -23,6 +23,7 @@
 #include "ns3/object.h"
 #include "ns3/random-variable-stream.h"
 #include "ns3/vector.h"
+#include <map>
 
 namespace ns3 {
 
@@ -221,6 +222,84 @@ private:
   double m_deltaX; //!< x interval between two consecutive x positions
   double m_deltaY; //!< y interval between two consecutive y positions
 };
+
+/**
+ * \ingroup mobility
+ * \brief Allocate positions on a rectangular 2d grid
+ *        through a forced uniform distribution
+ */
+class UniformGridPositionAllocator : public PositionAllocator
+{
+public:
+  /**
+   * Register this type with the TypeId system.
+   * \return the object TypeId
+   */
+  static TypeId GetTypeId (void);
+
+  UniformGridPositionAllocator ();
+
+  /**
+   * \param dimension the number of rows and columns in the grid.
+   */
+  void SetDimension (int32_t dimension);
+  /**
+   * \param z   the Z coordinate of all the positions allocated
+   */
+  void SetZ (double z);
+  /**
+   * \param delta the interval between two consecutive positions.
+   */
+  void SetDelta (double delta);
+  /**
+   * \param radius the search radius used to determine a node's new
+   *        position. Set to -1 for global search.
+   */
+  void SetRadius (int32_t radius);
+
+  /**
+   * \param coords the xy coordinates of the current node
+   */
+  static void SetCoords (std::pair<double, double> coords);
+
+  /**
+   * \return the x and y dimension of the grid. 
+   */
+  int32_t GetDimension (void) const;
+  /**
+   * \return the interval between two consecutive positions.
+   */
+  double GetDelta (void) const;
+  /**
+   * \return the search radius of a given node.
+   */
+  int32_t GetRadius (void) const;
+
+  /**
+   * \param x the x coordinate of the node
+   * \param y the y coordinate of the node
+   *
+   */
+  int32_t GetGridNumber (double x, double y) const;
+  /**
+   * Determine coordinates of node number in grid
+   */
+  Vector GetGridVector (int32_t grid_num) const;
+
+  virtual Vector GetNext (void) const;
+  virtual int64_t AssignStreams (int64_t stream);
+
+private:
+  mutable uint32_t m_current; //!< currently position
+  int32_t m_dimension; //!< grid dimesions for both x and y axis 
+  double m_z; //!< z coordinate of all the positions generated
+  double m_delta; //!< interval between two consecutive positions
+  int32_t m_radius; //!< search radius of a node's new position
+  mutable std::map<int32_t,int32_t> grid_visits;  //!< map of visits per grid location
+  Ptr<UniformRandomVariable> rand_num = CreateObject<UniformRandomVariable> ();
+  inline static std::pair<double, double> m_coords = std::pair(0.0,0.0); //!< x and y coordinates of the most recent node
+};
+
 
 /**
  * \ingroup mobility

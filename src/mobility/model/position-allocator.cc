@@ -22,11 +22,13 @@
 #include "ns3/string.h"
 #include "ns3/pointer.h"
 #include "ns3/uinteger.h"
+#include "ns3/integer.h"
 #include "ns3/enum.h"
 #include "ns3/log.h"
 #include "ns3/csv-reader.h"
 
 #include <cmath>
+#include <vector>
 
 namespace ns3 {
 
@@ -286,6 +288,231 @@ GridPositionAllocator::GetNext (void) const
 
 int64_t
 GridPositionAllocator::AssignStreams (int64_t stream)
+{
+  return 0;
+}
+
+NS_OBJECT_ENSURE_REGISTERED (UniformGridPositionAllocator);
+
+TypeId
+UniformGridPositionAllocator::GetTypeId (void)
+{
+  static TypeId tid = TypeId ("ns3::UniformGridPositionAllocator")
+    .SetParent<PositionAllocator> ()
+    .SetGroupName ("Mobility")
+    .AddConstructor<UniformGridPositionAllocator> ()
+    .AddAttribute ("Dimension", "The dimensions for both the x and y axis",
+                   UintegerValue (6),
+                   MakeIntegerAccessor(&UniformGridPositionAllocator::m_dimension),
+                   MakeIntegerChecker<uint32_t> ())
+    .AddAttribute ("Z",
+                   "The z coordinate of all the positions allocated.",
+                   DoubleValue (0.0),
+                   MakeDoubleAccessor (&UniformGridPositionAllocator::m_z),
+                   MakeDoubleChecker<double> ())
+    .AddAttribute ("Delta", "The space between objects.",
+                   DoubleValue (1.0),
+                   MakeDoubleAccessor (&UniformGridPositionAllocator::m_delta),
+                   MakeDoubleChecker<double> ())
+    .AddAttribute ("Radius", "Search radius to determine a node's new position",
+                   IntegerValue (1),
+                   MakeIntegerAccessor (&UniformGridPositionAllocator::m_radius),
+                   MakeIntegerChecker<int32_t> ())
+    ;
+  return tid;
+}
+
+UniformGridPositionAllocator::UniformGridPositionAllocator ()
+  : m_current (0)
+{
+}
+
+void
+UniformGridPositionAllocator::SetDimension(int32_t dimension)
+{
+  m_dimension = dimension;
+}
+
+void
+UniformGridPositionAllocator::SetZ (double z)
+{
+  m_z = z;
+}
+
+void
+UniformGridPositionAllocator::SetDelta (double delta)
+{
+  m_delta = delta;
+}
+
+void
+UniformGridPositionAllocator::SetRadius (int32_t radius)
+{
+  m_radius = radius;
+}
+
+void
+UniformGridPositionAllocator::SetCoords (std::pair<double, double> coords)
+{
+  m_coords = coords;
+}
+
+int32_t
+UniformGridPositionAllocator::GetDimension (void) const
+{
+  return m_dimension;
+}
+
+double
+UniformGridPositionAllocator::GetDelta (void) const
+{
+  return m_delta;
+}
+
+int32_t
+UniformGridPositionAllocator::GetRadius (void) const
+{
+  return m_radius;
+}
+
+Vector
+UniformGridPositionAllocator::GetGridVector (int32_t grid_num) const
+{
+  // Determine row and column number
+  int row = grid_num / m_dimension;
+  int col = grid_num % m_dimension;
+
+  // Determine coordinate values
+  double x = col * m_delta + (m_delta / 2.0);
+  double y = row * m_delta + (m_delta / 2.0);
+
+  // Debug Statements
+  //std::cout << "Old Coords: " << m_coords.first << ',' << m_coords.second << std::endl;
+  //std::cout << "New Coords: " << x << ',' << y << std::endl << std::endl;
+  //std::cout << "Old Node: " << GetGridNumber(m_coords.first, m_coords.second) << " New Node: " << GetGridNumber(x, y) << std::endl;
+
+  // Return vector
+  return Vector(x, y , m_z);
+}
+
+int32_t
+UniformGridPositionAllocator::GetGridNumber (double x, double y) const
+{
+  // Convert coordinates to a grid number
+  int32_t col = x / m_delta;
+  int32_t row = (int)(y / m_delta) * m_dimension;
+
+  return (col + row);
+}
+
+Vector
+UniformGridPositionAllocator::GetNext (void) const
+{
+  // Get all other nodes around central node
+  // based on search radius 
+  std::vector<int> indexes;
+  int32_t grid_num = GetGridNumber(m_coords.first, m_coords.second);
+  if (m_radius != -1) {
+    int row = grid_num / m_dimension;
+    int col = grid_num % m_dimension;
+
+    // Add all nodes surrounding the current node
+    int new_col = col - 1;
+    int radius_cnt = m_radius;
+    while (new_col >= 0 && radius_cnt > 0) {
+      int search_idx = new_col + (row * m_dimension);
+      indexes.push_back(search_idx);
+      int new_row = row + 1;
+      int inner_radius_cnt = m_radius;
+      while (new_row < m_dimension && inner_radius_cnt > 0) {
+        int search_idx = new_col + (new_row * m_dimension);
+        indexes.push_back(search_idx);
+        new_row++;
+        inner_radius_cnt--;
+      }
+      new_row = row - 1;
+      inner_radius_cnt = m_radius;
+      while (new_row >= 0 && inner_radius_cnt > 0) {
+        int search_idx = new_col + (new_row * m_dimension);
+        indexes.push_back(search_idx);
+        new_row--;
+        inner_radius_cnt--;
+      }
+      new_col--;
+      radius_cnt--;
+    }
+    new_col = col + 1;
+    radius_cnt = m_radius;
+    while (new_col < m_dimension && radius_cnt > 0) {
+      int search_idx = new_col + (row * m_dimension);
+      indexes.push_back(search_idx);
+      int new_row = row + 1;
+      int inner_radius_cnt = m_radius;
+      while (new_row < m_dimension && inner_radius_cnt > 0) {
+        int search_idx = new_col + (new_row * m_dimension);
+        indexes.push_back(search_idx);
+        new_row++;
+        inner_radius_cnt--;
+      }
+      new_row = row - 1;
+      inner_radius_cnt = m_radius;
+      while (new_row >= 0 && inner_radius_cnt > 0) {
+        int search_idx = new_col + (new_row * m_dimension);
+        indexes.push_back(search_idx);
+        new_row--;
+        inner_radius_cnt--;
+      }
+      new_col++;
+      radius_cnt--;
+
+    }
+    int new_row = row + 1;
+    radius_cnt = m_radius;
+    while (new_row < m_dimension && radius_cnt > 0) {
+      int search_idx = col + (new_row * m_dimension);
+      indexes.push_back(search_idx);
+      new_row++;
+      radius_cnt--;
+    }
+    new_row = row - 1;
+    radius_cnt = m_radius;
+    while (new_row >= 0 && radius_cnt > 0) {
+      int search_idx = col + (new_row * m_dimension);
+      indexes.push_back(search_idx);
+      new_row--;
+      radius_cnt--;
+    }
+  } else { // Otherwise, add all locations
+    for (int i = 0; i < m_dimension * m_dimension; i++) {
+      indexes.push_back(i);
+    }
+  }
+
+
+  // Find minimum value in map first
+  int min = 999999;
+  for (auto i : indexes) {
+    if (grid_visits[i] < min) min = grid_visits[i];
+  }
+
+  std::vector<int> min_indexes;
+  // Search through entire map and keep track of locations with lowest visit count
+  for (auto i : indexes) {
+    if (grid_visits[i] == min) min_indexes.push_back(i);
+  }
+  
+  // Based on size of vector, choose random grid location
+  int lowest_visit = min_indexes[(int)(rand_num->GetValue() * min_indexes.size())];
+
+  // Increment visit count
+  grid_visits[lowest_visit]++;
+  
+  // Return Vector
+  return GetGridVector(lowest_visit);
+}
+
+int64_t
+UniformGridPositionAllocator::AssignStreams (int64_t stream)
 {
   return 0;
 }
