@@ -61,8 +61,8 @@ RandomWaypointMobilityModel::BeginWalk (void)
   m_helper.Update ();
   Vector m_current = m_helper.GetCurrentPosition ();
   NS_ASSERT_MSG (m_position, "No position allocator added before using this model");
+  UniformGridPositionAllocator::SetCoords(std::pair(m_current.x,m_current.y));
   Vector destination = m_position->GetNext ();
-  while (m_current == destination) destination = m_position->GetNext(); // Needed to prevent -nan
   double speed = m_speed->GetValue ();
   double dx = (destination.x - m_current.x);
   double dy = (destination.y - m_current.y);

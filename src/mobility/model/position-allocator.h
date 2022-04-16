@@ -242,7 +242,7 @@ public:
   /**
    * \param dimension the number of rows and columns in the grid.
    */
-  void SetDimension (uint32_t dimension);
+  void SetDimension (int32_t dimension);
   /**
    * \param z   the Z coordinate of all the positions allocated
    */
@@ -258,9 +258,14 @@ public:
   void SetRadius (int32_t radius);
 
   /**
+   * \param coords the xy coordinates of the current node
+   */
+  static void SetCoords (std::pair<double, double> coords);
+
+  /**
    * \return the x and y dimension of the grid. 
    */
-  uint32_t GetDimension (void) const;
+  int32_t GetDimension (void) const;
   /**
    * \return the interval between two consecutive positions.
    */
@@ -271,24 +276,28 @@ public:
   int32_t GetRadius (void) const;
 
   /**
+   * \param x the x coordinate of the node
+   * \param y the y coordinate of the node
+   *
+   */
+  int32_t GetGridNumber (double x, double y) const;
+  /**
    * Determine coordinates of node number in grid
    */
   Vector GetGridVector (int32_t grid_num) const;
-  /**
-   * Chooses an XY location with the least amount of visits
-   */
-  Vector GetNextHelper (void) const;
+
   virtual Vector GetNext (void) const;
   virtual int64_t AssignStreams (int64_t stream);
 
 private:
   mutable uint32_t m_current; //!< currently position
-  uint32_t m_dimension; //!< grid dimesions for both x and y axis 
+  int32_t m_dimension; //!< grid dimesions for both x and y axis 
   double m_z; //!< z coordinate of all the positions generated
   double m_delta; //!< interval between two consecutive positions
   int32_t m_radius; //!< search radius of a node's new position
   mutable std::map<int32_t,int32_t> grid_visits;  //!< map of visits per grid location
   Ptr<UniformRandomVariable> rand_num = CreateObject<UniformRandomVariable> ();
+  inline static std::pair<double, double> m_coords = std::pair(0.0,0.0); //!< x and y coordinates of the most recent node
 };
 
 
