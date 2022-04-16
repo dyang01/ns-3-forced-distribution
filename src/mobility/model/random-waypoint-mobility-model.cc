@@ -62,12 +62,12 @@ RandomWaypointMobilityModel::BeginWalk (void)
   Vector m_current = m_helper.GetCurrentPosition ();
   NS_ASSERT_MSG (m_position, "No position allocator added before using this model");
   Vector destination = m_position->GetNext ();
+  while (m_current == destination) destination = m_position->GetNext(); // Needed to prevent -nan
   double speed = m_speed->GetValue ();
   double dx = (destination.x - m_current.x);
   double dy = (destination.y - m_current.y);
   double dz = (destination.z - m_current.z);
   double k = speed / std::sqrt (dx*dx + dy*dy + dz*dz);
-  std::cout << "Going to xyz:" << destination.x << ',' << destination.y << ',' << destination.z << std::endl;
 
   m_helper.SetVelocity (Vector (k*dx, k*dy, k*dz));
   m_helper.Unpause ();

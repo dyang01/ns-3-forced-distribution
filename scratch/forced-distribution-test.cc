@@ -27,6 +27,7 @@ int main (int argc, char *argv[])
 {
   RngSeedManager::SetSeed(123);
   // Set default parameters for cmd inputs
+  std::string allocator = "uniformgrid";
   uint32_t numNodes = 10;
   uint32_t dimension = 8;
   double width = 5;
@@ -38,6 +39,7 @@ int main (int argc, char *argv[])
 
   // Read cmd inputs
   CommandLine cmd (__FILE__);
+  cmd.AddValue ("allocator", "The position allocator used", allocator);
   cmd.AddValue ("numNodes", "Number of nodes for the mobility model", numNodes);
   cmd.AddValue ("dimension", "X and Y dimension of the grid", dimension);
   cmd.AddValue ("width", "Width of each grid location", width);
@@ -56,12 +58,21 @@ int main (int argc, char *argv[])
   // Create mobility model
   MobilityHelper mobility;
   ObjectFactory pos;
-  pos.SetTypeId ("ns3::UniformGridPositionAllocator");
-  pos.Set( "Dimension", UintegerValue (dimension));
-  pos.Set( "Delta", DoubleValue (width));
-  //pos.Set( "DeltaY", DoubleValue (5.0));
-  //pos.Set( "GridWidth", UintegerValue (3));
-  pos.Set( "Radius", IntegerValue (3));
+  if (allocator == "uniformgrid")
+  {
+    pos.SetTypeId ("ns3::UniformGridPositionAllocator");
+    pos.Set( "Dimension", UintegerValue (dimension));
+    pos.Set( "Delta", DoubleValue (width));
+    //pos.Set( "DeltaY", DoubleValue (5.0));
+    //pos.Set( "GridWidth", UintegerValue (3));
+    pos.Set( "Radius", IntegerValue (3));
+  } else
+  {
+    std::string max = std::to_string(width * (double)(dimension) / 2);
+    pos.SetTypeId ("ns3::RandomRectanglePositionAllocator");
+    pos.Set ("X", StringValue ("ns3::UniformRandomVariable[Min=0.0|Max=" + max + "]"));
+    pos.Set ("Y", StringValue ("ns3::UniformRandomVariable[Min=0.0|Max=" + max + "]"));
+  }
   Ptr <PositionAllocator> taPositionAlloc = pos.Create ()->GetObject <PositionAllocator> ();
   mobility.SetMobilityModel ("ns3::RandomWaypointMobilityModel", 
                               "Speed", StringValue (speed),
