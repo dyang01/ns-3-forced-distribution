@@ -484,6 +484,7 @@ UniformGridPositionAllocator::GetNext (void) const
     }
   } else { // Otherwise, add all locations
     for (int i = 0; i < m_dimension * m_dimension; i++) {
+      if (i == grid_num) continue;
       indexes.push_back(i);
     }
   }
@@ -506,6 +507,7 @@ UniformGridPositionAllocator::GetNext (void) const
 
   // Increment visit count
   grid_visits[lowest_visit]++;
+  //std::cout << "Grid " << lowest_visit << " has visits: " << grid_visits[lowest_visit] << std::endl;
   
   // Return Vector
   return GetGridVector(lowest_visit);
