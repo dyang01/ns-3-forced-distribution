@@ -21,11 +21,13 @@
 #include <iostream>
 #include <fstream>
 #include <math.h>
+#include <vector>
 
 using namespace ns3;
+
 int main (int argc, char *argv[])
 {
-  //RngSeedManager::SetSeed(123);
+  RngSeedManager::SetSeed(time(NULL));
   // Set default parameters for cmd inputs
   std::string allocator = "uniformgrid";
   uint32_t numNodes = 100;
@@ -52,6 +54,7 @@ int main (int argc, char *argv[])
   cmd.Parse (argc, argv);
 
   std::string speed = "ns3::UniformRandomVariable[Min=" + minSpeed + "|Max=" + maxSpeed + "]";
+  std::string max = std::to_string(width * (double)(dimension));
 
   // Create nodes
   NodeContainer c;
@@ -68,16 +71,35 @@ int main (int argc, char *argv[])
     pos.Set( "Radius", IntegerValue (radius));
   } else // "rect"
   {
-    std::string max = std::to_string(width * (double)(dimension));
     pos.SetTypeId ("ns3::RandomRectanglePositionAllocator");
     pos.Set ("X", StringValue ("ns3::UniformRandomVariable[Min=0.0|Max=" + max + "]"));
     pos.Set ("Y", StringValue ("ns3::UniformRandomVariable[Min=0.0|Max=" + max + "]"));
   }
   Ptr <PositionAllocator> taPositionAlloc = pos.Create ()->GetObject <PositionAllocator> ();
-  mobility.SetMobilityModel ("ns3::RandomWaypointMobilityModel", 
-                              "Speed", StringValue (speed),
-                              "Pause", StringValue ("ns3::ConstantRandomVariable[Constant=" + pause + "]"), 
-                              "PositionAllocator", PointerValue (taPositionAlloc));
+
+  // select mobility model
+  if (allocator == "uniformgrid")
+  {
+    mobility.SetMobilityModel ("ns3::RandomWaypointMobilityModel", 
+                                "Speed", StringValue (speed),
+                                "Pause", StringValue ("ns3::ConstantRandomVariable[Constant=" + pause + "]"), 
+                                "PositionAllocator", PointerValue (taPositionAlloc));
+  }
+  else if (allocator == "randomwalk")
+  {
+    mobility.SetMobilityModel ("ns3::RandomWalk2dMobilityModel", 
+                                "Mode", StringValue ("Time"),
+                                "Time", StringValue ("2s"), 
+                                "Speed", StringValue (speed),
+                                "Bounds", StringValue ("0|" + max + "|0|" + max));
+  }
+  else if (allocator == "randomwaypoint")
+  {
+    mobility.SetMobilityModel ("ns3::RandomWaypointMobilityModel", 
+                                "Speed", StringValue (speed),
+                                "Pause", StringValue ("ns3::ConstantRandomVariable[Constant=" + pause + "]"), 
+                                "PositionAllocator", PointerValue (taPositionAlloc));
+  }
   mobility.SetPositionAllocator (taPositionAlloc);
   mobility.InstallAll ();
 
@@ -89,24 +111,50 @@ int main (int argc, char *argv[])
   // Read and Write stats from simulation
   //std::ofstream output;
   //std::string output_name = allocator + "_data.txt";
-  //output.open (output_name);
+  //output.open ("empty_cell.txt");
   //output << "node,x-coord,y-coord,distFromCenter\n";
 
   double average_dist_sum = 0;
   double center = width * (double)(dimension) / 2;
+  
+  // Initialize 2d vector cell with dimension sizes
+  std::vector<std::vector<bool>> flag;
+  flag.resize(dimension);
+  for (uint32_t i = 0; i < dimension; i++){
+    flag[i].resize(dimension);
+    for (uint32_t j = 0; j < dimension; j++){
+      flag[i][j] = false;
+    }
+  }    
 
   for (uint32_t i = 0; i < numNodes; i++) {
     Ptr<MobilityModel> mmp = c.Get(i)->GetObject<MobilityModel>();
     Vector apV;
     apV = mmp->GetPosition();
-    std::cout << "Node " << i << ": x-coord: " << apV.x << ", y-coord: " << apV.y << std::endl;
+    //std::cout << "Node " << i << ": x-coord: " << apV.x << ", y-coord: " << apV.y << std::endl;
     double average_dist = pow(pow(((double)apV.x - center), 2) + pow(((double)apV.y - center), 2),0.5);
     average_dist_sum += average_dist;
+
+    // Set cell at node position as visited
+    flag[(int)((double)apV.x/width)][(int)((double)apV.y/width)] = true;
+    //std::cout << flag[(int)((double)apV.x/dimension)][(int)((double)apV.y/dimension)];
     //output << i << "," << apV.x << "," << apV.y << "," << average_dist << std::endl;
   }
   average_dist_sum /= numNodes;
+
+  // count the number of unvisited cell
+  int count = 0;
+  for (uint32_t i = 0; i < dimension; i++){
+    for (uint32_t j = 0; j < dimension; j++){
+      if (flag[i][j] == false){
+        count++;
+      }
+    }
+  }  
+  
+  std::cout << count << std::endl;
   //std::cout << "Average Dist From Center: " << average_dist_sum << std::endl;
-  //output << "Average Dist From Center: " << average_dist_sum << std::endl;
+  //output << count << std::endl;
 
   Simulator::Destroy ();
   return 0;
