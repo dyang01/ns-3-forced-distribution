@@ -55,6 +55,7 @@ int main (int argc, char *argv[])
 
   std::string speed = "ns3::UniformRandomVariable[Min=" + minSpeed + "|Max=" + maxSpeed + "]";
   std::string max = std::to_string(width * (double)(dimension));
+  double d_max = width * (double)(dimension);
 
   // Create nodes
   NodeContainer c;
@@ -100,6 +101,13 @@ int main (int argc, char *argv[])
                                 "Pause", StringValue ("ns3::ConstantRandomVariable[Constant=" + pause + "]"), 
                                 "PositionAllocator", PointerValue (taPositionAlloc));
   }
+  else if (allocator == "randomdirection")
+  {
+    mobility.SetMobilityModel ("ns3::RandomDirection2dMobilityModel", 
+                                "Bounds", RectangleValue (Rectangle (0, d_max, 0, d_max)),
+                                "Speed", StringValue (speed),
+                                "Pause", StringValue ("ns3::ConstantRandomVariable[Constant=" + pause + "]"));
+  }
   mobility.SetPositionAllocator (taPositionAlloc);
   mobility.InstallAll ();
 
@@ -141,7 +149,7 @@ int main (int argc, char *argv[])
     //output << i << "," << apV.x << "," << apV.y << "," << average_dist << std::endl;
   }
   average_dist_sum /= numNodes;
-
+  
   // count the number of unvisited cell
   int count = 0;
   for (uint32_t i = 0; i < dimension; i++){
